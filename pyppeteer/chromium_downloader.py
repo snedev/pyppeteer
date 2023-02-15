@@ -5,6 +5,7 @@
 
 import logging
 import os
+import platform
 import stat
 import sys
 from io import BytesIO
@@ -46,6 +47,8 @@ downloadURLs = {
 }
 
 chromiumExecutable = {
+    'arm_linux': Path('/usr/bin/chromium-browser'),
+    'aarch64_linux': Path('/usr/bin/chromium'),
     'linux': DOWNLOADS_FOLDER / REVISION / 'chrome-linux' / 'chrome',
     'mac': (DOWNLOADS_FOLDER / REVISION / 'chrome-mac' / 'Chromium.app' / 'Contents' / 'MacOS' / 'Chromium'),
     'win32': DOWNLOADS_FOLDER / REVISION / windowsArchive / 'chrome.exe',
@@ -55,7 +58,11 @@ chromiumExecutable = {
 
 def current_platform() -> str:
     """Get current platform name by short string."""
-    if sys.platform.startswith('linux'):
+    if sys.platform.startswith('linux') and platform.uname().machine.startswith('armv'):
+        return 'arm_linux'
+    elif sys.platform.startswith('linux') and platform.uname().machine.startswith('aarch64'):
+        return 'aarch64_linux'
+    elif sys.platform.startswith('linux'):
         return 'linux'
     elif sys.platform.startswith('darwin'):
         return 'mac'
@@ -136,7 +143,12 @@ def extract_zip(data: BytesIO, path: Path) -> None:
 
 def download_chromium() -> None:
     """Download and extract chromium."""
-    extract_zip(download_zip(get_url()), DOWNLOADS_FOLDER / REVISION)
+    if current_platform() == 'arm_linux' or current_platform() == 'aarch64_linux':
+        exec_path = chromium_executable()
+        if not exec_path.exists():
+            logger.warning("Please install chromium via your package manager, eg 'sudo apt-get install chromium'")
+    else:
+        extract_zip(download_zip(get_url()), DOWNLOADS_FOLDER / REVISION)
 
 
 def chromium_executable() -> Path:
